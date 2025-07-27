@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Absensi Kelas SMKN 18 Pandeglang</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Animasi untuk notifikasi */
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; transform: translateY(20px); }
+            10%, 90% { opacity: 1; transform: translateY(0); }
+        }
+        .toast-notification {
+            animation: fadeInOut 3s ease-in-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-gray-200">
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm">
+            <h2 class="text-2xl font-bold text-center text-gray-700 mb-2">Login Aplikasi Absensi</h2>
+            <p class="text-center text-gray-500 mb-6">SMKN 18 Pandeglang</p>
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="username" class="block text-sm font-medium text-gray-600 mb-2">Username</label>
+                    <input type="text" id="username" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-medium text-gray-600 mb-2">Password</label>
+                    <input type="password" id="password" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <p id="login-error" class="text-red-500 text-sm text-center mb-4 hidden"></p>
+                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition duration-300 shadow-md">
+                    Masuk
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="app-container" class="hidden">
+        <div class="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl">
+            <header class="text-center mb-8">
+                <h1 class="text-3xl sm:text-4xl font-bold text-gray-700">Absensi Kelas</h1>
+                <p class="text-gray-500 mt-1">
+"Sistem digital yang mencatat kehadiran peserta didik memberikan kemudahan akses, akurasi data yang lebih baik, laporan yang otomatis, dan efisiensi waktu menawarkan solusi modern yang efektif untuk pengelolaan laporan kehadiran di SMKN 18 Pandeglang"
+</p>
+            </header>
+
+            <div class="bg-white p-6 rounded-xl shadow-md mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="date-picker" class="block text-sm font-medium text-gray-600 mb-2">Tanggal Absensi</label>
+                        <input type="date" id="date-picker" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                    </div>
+                    <div>
+                        <label for="class-selector" class="block text-sm font-medium text-gray-600 mb-2">Pilih Kelas</label>
+                        <select id="class-selector" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                        </select>
+                    </div>
+                </div>
+                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mt-4">
+                    <button id="manage-class-btn" class="w-full bg-blue-700 text-white p-3 rounded-lg hover:bg-red-700 transition shadow-sm">Kelas</button>
+                    <button id="manage-student-btn" class="w-full bg-blue-700 text-white p-3 rounded-lg hover:bg-red-700 transition shadow-sm">Peserta Didik</button>
+                    <button id="manage-account-btn" class="w-full bg-blue-700 text-white p-3 rounded-lg hover:bg-red-700 transition shadow-sm">Akun</button>
+                    <button id="recap-btn" class="w-full bg-blue-700 text-white p-3 rounded-lg hover:bg-red-700 transition shadow-sm">Rekapitulasi</button>
+                    <button id="logout-btn" class="w-full bg-blue-700 text-white p-3 rounded-lg hover:bg-red-700 transition shadow-sm">Keluar</button>
+                </div>
+            </div>
+
+            <main id="attendance-section" class="bg-white p-6 rounded-xl shadow-md">
+                <h2 class="text-2xl font-semibold mb-2">Daftar Kehadiran</h2>
+                <p id="attendance-subtitle" class="text-gray-500 mb-6">Pilih tanggal dan kelas untuk memulai absensi.</p>
+                <div id="student-list" class="space-y-4">
+                </div>
+                <div class="mt-8 flex justify-end">
+                    <button id="save-btn" class="bg-blue-700 text-white py-3 px-6 rounded-lg hover:bg-red-700 transition duration-300 shadow-md disabled:bg-red-700 disabled:cursor-not-allowed">
+                        Simpan Absensi
+                    </button>
+                </div>
+            </main>
+            
+            <section id="history-section" class="mt-8">
+                <h2 class="text-2xl font-semibold mb-4 text-center text-gray-700">Riwayat Absensi</h2>
+                <div id="history-records" class="space-y-4">
+                    <p class="text-center text-gray-500">Belum ada riwayat tersimpan.</p>
+                </div>
+            </section>
+        </div>
+
+        <div id="class-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
+            <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg transform transition-all">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800">Kelola Daftar Kelas</h3>
+                    <button id="close-class-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
+                </div>
+                <form id="add-class-form" class="flex items-center gap-3 mb-6">
+                    <input type="text" id="new-class-name" placeholder="Ketik nama kelas baru..." class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                    <button type="submit" class="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 transition">Tambah</button>
+                </form>
+                <div id="modal-class-list" class="space-y-3 max-h-60 overflow-y-auto pr-2">
+                </div>
+            </div>
+        </div>
+
+        <div id="student-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
+            <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg transform transition-all">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800">Kelola Daftar Peserta Didik</h3>
+                    <button id="close-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
+                </div>
+                <div class="mb-6">
+                    <label for="modal-class-selector" class="block text-sm font-medium text-gray-600 mb-2">Kelas</label>
+                    <select id="modal-class-selector" class="w-full p-3 border border-gray-300 rounded-lg"></select>
+                </div>
+
+                <div id="import-student-section" class="mb-6 p-4 border-dashed border-2 border-gray-300 rounded-lg">
+                    <h4 class="font-semibold text-lg mb-2 text-gray-700">Impor Banyak Peserta Didik</h4>
+                    <p class="text-sm text-gray-500 mb-3">Salin dan tempel daftar nama. Pastikan setiap nama berada di baris baru.</p>
+                    <textarea id="bulk-student-names" rows="5" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="Nama Siswa 1&#10;Nama Siswa 2&#10;Nama Siswa 3"></textarea>
+                    <button id="import-student-btn" class="mt-3 w-full bg-teal-500 text-white p-3 rounded-lg hover:bg-teal-600 transition">Proses Impor</button>
+                </div>
+                
+                <hr class="my-4">
+
+                <form id="add-student-form" class="flex items-center gap-3 mb-6">
+                    <input type="text" id="new-student-name" placeholder="Tambah satu per satu..." class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                    <button type="submit" class="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 transition">Tambah</button>
+                </form>
+                <div id="modal-student-list" class="space-y-3 max-h-60 overflow-y-auto pr-2">
+                </div>
+            </div>
+        </div>
+
+        <div id="account-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
+            <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg transform transition-all">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800">Kelola Akun Login</h3>
+                    <button id="close-account-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
+                </div>
+                <form id="add-account-form" class="space-y-4 mb-6 p-4 border rounded-lg bg-gray-50">
+                    <h4 class="font-semibold text-lg">Tambah Akun Baru</h4>
+                    <div>
+                        <label for="new-username" class="block text-sm font-medium text-gray-600 mb-1">Username Baru</label>
+                        <input type="text" id="new-username" placeholder="Masukkan username" class="w-full p-3 border border-gray-300 rounded-lg" required>
+                    </div>
+                     <div>
+                        <label for="new-user-password" class="block text-sm font-medium text-gray-600 mb-1">Password Baru</label>
+                        <input type="password" id="new-user-password" placeholder="Masukkan password" class="w-full p-3 border border-gray-300 rounded-lg" required>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition">Tambah Akun</button>
+                </form>
+                <h4 class="font-semibold text-lg mb-2">Daftar Akun</h4>
+                <div id="modal-account-list" class="space-y-3 max-h-48 overflow-y-auto pr-2">
+                    </div>
+            </div>
+        </div>
+        
+        <div id="recap-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
+            <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-4xl transform transition-all">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800">Rekapitulasi Kehadiran Peserta Didik</h3>
+                    <button id="close-recap-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                    <div class="flex-grow">
+                        <label for="recap-class-selector" class="block text-sm font-medium text-gray-600 mb-2">Pilih Kelas untuk Melihat Rekap</label>
+                        <select id="recap-class-selector" class="w-full p-3 border border-gray-300 rounded-lg"></select>
+                    </div>
+                    <div class="self-end">
+                        <button id="download-recap-btn" class="w-full sm:w-auto bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition">
+                            Download CSV
+                        </button>
+                    </div>
+                </div>
+                <div id="recap-content" class="max-h-96 overflow-y-auto pr-2">
+                </div>
+            </div>
+        </div>
+
+        <div id="toast" class="fixed bottom-5 right-5 bg-gray-800 text-white py-3 px-5 rounded-lg shadow-xl hidden toast-notification">
+            <p id="toast-message"></p>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // ===============================================================
+            // BAGIAN LOGIN & LOGOUT
+            // ===============================================================
+            const loginScreen = document.getElementById('login-screen');
+            const appContainer = document.getElementById('app-container');
+            const loginForm = document.getElementById('login-form');
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const loginError = document.getElementById('login-error');
+            const logoutBtn = document.getElementById('logout-btn');
+
+            function showApp() {
+                loginScreen.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                initializeApp();
+            }
+
+            if (sessionStorage.getItem('isLoggedIn') === 'true') {
+                showApp();
+            }
+
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const username = usernameInput.value;
+                const password = passwordInput.value;
+                
+                const storedData = JSON.parse(localStorage.getItem('absensiAppData') || '{}');
+                const users = storedData.users || [{ username: 'ahmadrifapermana', password: 'ahmadrifapermana' }];
+
+                const foundUser = users.find(user => user.username === username && user.password === password);
+
+                if (foundUser) {
+                    sessionStorage.setItem('isLoggedIn', 'true');
+                    showApp();
+                } else {
+                    loginError.textContent = 'Username atau password salah!';
+                    loginError.classList.remove('hidden');
+                }
+            });
+
+            logoutBtn.addEventListener('click', () => {
+                sessionStorage.removeItem('isLoggedIn');
+                location.reload(); 
+            });
+
+            // ===============================================================
+            // LOGIKA APLIKASI UTAMA
+            // ===============================================================
+
+            const datePicker = document.getElementById('date-picker');
+            const classSelector = document.getElementById('class-selector');
+            const studentListContainer = document.getElementById('student-list');
+            const attendanceSubtitle = document.getElementById('attendance-subtitle');
+            const saveBtn = document.getElementById('save-btn');
+            const historyRecordsContainer = document.getElementById('history-records');
+            
+            // Elemen Modal Kelola Kelas
+            const manageClassBtn = document.getElementById('manage-class-btn');
+            const classModal = document.getElementById('class-modal');
+            const closeClassModalBtn = document.getElementById('close-class-modal-btn');
+            const addClassForm = document.getElementById('add-class-form');
+            const newClassNameInput = document.getElementById('new-class-name');
+            const modalClassListContainer = document.getElementById('modal-class-list');
+
+            const manageStudentBtn = document.getElementById('manage-student-btn');
+            const studentModal = document.getElementById('student-modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const modalClassSelector = document.getElementById('modal-class-selector');
+            const addStudentForm = document.getElementById('add-student-form');
+            const newStudentNameInput = document.getElementById('new-student-name');
+            const modalStudentListContainer = document.getElementById('modal-student-list');
+            
+            // Elemen Baru untuk Impor Massal
+            const bulkStudentNamesArea = document.getElementById('bulk-student-names');
+            const importStudentBtn = document.getElementById('import-student-btn');
+
+            const manageAccountBtn = document.getElementById('manage-account-btn');
+            const accountModal = document.getElementById('account-modal');
+            const closeAccountModalBtn = document.getElementById('close-account-modal-btn');
+            const addAccountForm = document.getElementById('add-account-form');
+            const newUsernameInput = document.getElementById('new-username');
+            const newPasswordInput = document.getElementById('new-user-password');
+            const modalAccountListContainer = document.getElementById('modal-account-list');
+
+            const recapBtn = document.getElementById('recap-btn');
+            const recapModal = document.getElementById('recap-modal');
+            const closeRecapModalBtn = document.getElementById('close-recap-modal-btn');
+            const recapClassSelector = document.getElementById('recap-class-selector');
+            const recapContentContainer = document.getElementById('recap-content');
+            
+            // Elemen Baru untuk Download Laporan
+            const downloadRecapBtn = document.getElementById('download-recap-btn');
+
+            let appData = {
+                users: [],
+                classes: [],
+                students: {}, 
+                attendance: {}
+            };
+
+            const statusMap = {
+                H: { text: 'Hadir', color: 'bg-green-500', textColor: 'text-white' },
+                S: { text: 'Sakit', color: 'bg-yellow-500', textColor: 'text-white' },
+                I: { text: 'Izin', color: 'bg-blue-500', textColor: 'text-white' },
+                A: { text: 'Alfa', color: 'bg-red-500', textColor: 'text-white' }
+            };
+            
+            function showToast(message) {
+                const toast = document.getElementById('toast');
+                const toastMessage = document.getElementById('toast-message');
+                toastMessage.textContent = message;
+                toast.classList.remove('hidden');
+                setTimeout(() => {
+                    toast.classList.add('hidden');
+                }, 3000);
+            }
+
+            function initializeApp() {
+                const savedData = JSON.parse(localStorage.getItem('absensiAppData'));
+                if (savedData) {
+                    appData = savedData;
+                    if (!appData.users || appData.users.length === 0) {
+                        appData.users = [{ username: 'ahmadrifapermana', password: 'ahmadrifapermana' }];
+                    }
+                } else {
+                    appData = {
+                        users: [{ username: 'ahmadrifapermana', password: 'ahmadrifapermana' }],
+                        classes: [
+                            { id: '10-kuliner', name: '10 Kuliner' },
+                            { id: '10-pariwisata', name: '10 Pariwisata' },
+                            { id: '10-perhotelan', name: '10 Perhotelan' }
+                        ],
+                        students: {
+                            '10-kuliner': [ { id: 1, name: 'Budi Darmawan' }, { id: 2, name: 'Citra Lestari' }, { id: 3, name: 'Eka Wijaya' } ],
+                            '10-pariwisata': [ { id: 4, name: 'Dian Permata' }, { id: 5, name: 'Fajar Nugroho' } ],
+                            '10-perhotelan': []
+                        },
+                        attendance: {}
+                    };
+                }
+                
+                datePicker.value = new Date().toISOString().split('T')[0];
+                populateClassSelectors();
+                addEventListeners();
+                renderAttendanceList();
+                renderHistory();
+                saveData();
+            }
+
+            function populateClassSelectors() {
+                const selectors = [classSelector, modalClassSelector, recapClassSelector];
+                selectors.forEach(selector => selector.innerHTML = ''); 
+
+                if (appData.classes.length === 0) {
+                    const option = document.createElement('option');
+                    option.textContent = 'Tidak ada kelas, tambahkan dulu.';
+                    option.disabled = true;
+                    selectors.forEach(selector => selector.appendChild(option.cloneNode(true)));
+                } else {
+                    appData.classes.forEach(cls => {
+                        const option = document.createElement('option');
+                        option.value = cls.id;
+                        option.textContent = cls.name;
+                        selectors.forEach(selector => selector.appendChild(option.cloneNode(true)));
+                    });
+                }
+            }
+
+            function saveData() {
+                localStorage.setItem('absensiAppData', JSON.stringify(appData));
+            }
+
+            function renderAttendanceList() {
+                const selectedDate = datePicker.value;
+                const selectedClassId = classSelector.value;
+                
+                studentListContainer.innerHTML = '';
+                saveBtn.disabled = true;
+
+                if (!selectedDate || !selectedClassId || appData.classes.length === 0) {
+                    attendanceSubtitle.textContent = 'Pilih tanggal dan kelas untuk memulai absensi.';
+                     if (appData.classes.length === 0) {
+                         attendanceSubtitle.textContent = 'Silakan tambahkan data kelas terlebih dahulu.';
+                     }
+                    return;
+                }
+                
+                const students = appData.students[selectedClassId] || [];
+                if (students.length === 0) {
+                    attendanceSubtitle.textContent = `Tidak ada Peserta Didik di kelas ${classSelector.options[classSelector.selectedIndex].text}. Silakan tambahkan Peserta Didik.`;
+                    return;
+                }
+
+                attendanceSubtitle.textContent = `Absensi Kelas ${classSelector.options[classSelector.selectedIndex].text} - ${new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+                saveBtn.disabled = false;
+
+                const attendanceKey = `${selectedDate}_${selectedClassId}`;
+                const todaysAttendance = appData.attendance[attendanceKey] || {};
+
+                students.forEach(student => {
+                    const studentStatus = todaysAttendance[student.id] || null;
+                    const studentRow = document.createElement('div');
+                    studentRow.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200';
+                    
+                    studentRow.innerHTML = `
+                        <p class="font-medium text-gray-700">${student.name}</p>
+                        <div class="flex space-x-2" data-student-id="${student.id}">
+                            ${Object.keys(statusMap).map(key => `
+                                <button data-status="${key}" class="status-btn w-12 h-9 text-sm rounded-md transition ${studentStatus === key ? statusMap[key].color + ' ' + statusMap[key].textColor : 'bg-gray-200 hover:bg-gray-300'}">
+                                    ${key}
+                                </button>
+                            `).join('')}
+                        </div>
+                    `;
+                    studentListContainer.appendChild(studentRow);
+                });
+            }
+            
+            function renderHistory() {
+                historyRecordsContainer.innerHTML = '';
+                const sortedKeys = Object.keys(appData.attendance).sort().reverse();
+
+                if (sortedKeys.length === 0) {
+                    historyRecordsContainer.innerHTML = '<p class="text-center text-gray-500">Belum ada riwayat tersimpan.</p>';
+                    return;
+                }
+
+                sortedKeys.forEach(key => {
+                    const [date, classId] = key.split('_');
+                    const className = (appData.classes.find(c => c.id === classId) || {name: 'Kelas Terhapus'}).name;
+                    const dailyAttendance = appData.attendance[key];
+                    const studentsInClass = appData.students[classId] || [];
+                    
+                    let summary = { H: 0, S: 0, I: 0, A: 0, Total: studentsInClass.length };
+                    studentsInClass.forEach(student => {
+                        const status = dailyAttendance[student.id];
+                        if (status) summary[status]++;
+                    });
+
+                    const historyCard = document.createElement('div');
+                    historyCard.className = 'bg-white p-5 rounded-lg shadow-sm border';
+                    historyCard.innerHTML = `
+                        <div class="flex justify-between items-center mb-3">
+                            <div>
+                                <h4 class="font-bold text-lg text-gray-800">${className}</h4>
+                                <p class="text-sm text-gray-500">${new Date(date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                            </div>
+                            <button data-key="${key}" class="delete-history-btn text-red-500 hover:text-red-700 text-xs font-semibold">HAPUS</button>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-sm">
+                            <div class="bg-gray-100 p-2 rounded"><span class="font-bold block">${summary.Total}</span><span class="text-gray-600">Peserta Didik</span></div>
+                            <div class="bg-green-100 p-2 rounded"><span class="font-bold block">${summary.H}</span><span class="text-green-700">Hadir</span></div>
+                            <div class="bg-yellow-100 p-2 rounded"><span class="font-bold block">${summary.S}</span><span class="text-yellow-700">Sakit</span></div>
+                            <div class="bg-blue-100 p-2 rounded"><span class="font-bold block">${summary.I}</span><span class="text-blue-700">Izin</span></div>
+                            <div class="bg-red-100 p-2 rounded"><span class="font-bold block">${summary.A}</span><span class="text-red-700">Alfa</span></div>
+                        </div>
+                    `;
+                    historyRecordsContainer.appendChild(historyCard);
+                });
+            }
+
+            function renderModalClassList() {
+                modalClassListContainer.innerHTML = '';
+                const classes = appData.classes || [];
+
+                if (classes.length === 0) {
+                    modalClassListContainer.innerHTML = '<p class="text-center text-gray-400">Belum ada kelas.</p>';
+                    return;
+                }
+
+                classes.forEach(cls => {
+                    const classItem = document.createElement('div');
+                    classItem.className = 'flex items-center justify-between bg-gray-100 p-3 rounded-md';
+                    classItem.dataset.classId = cls.id;
+                    classItem.innerHTML = `
+                        <span class="class-name">${cls.name}</span>
+                        <div class="flex items-center space-x-3">
+                            <button data-class-id="${cls.id}" data-class-name="${cls.name}" class="edit-class-btn text-blue-500 hover:text-blue-700 font-semibold">Edit</button>
+                            <button data-class-id="${cls.id}" class="delete-class-btn text-red-500 hover:text-red-700 font-bold text-lg">&times;</button>
+                        </div>
+                    `;
+                    modalClassListContainer.appendChild(classItem);
+                });
+            }
+            
+            function renderModalStudentList() {
+                const selectedClassId = modalClassSelector.value;
+                modalStudentListContainer.innerHTML = '';
+
+                if (!selectedClassId) {
+                     modalStudentListContainer.innerHTML = '<p class="text-center text-gray-400">Pilih kelas terlebih dahulu.</p>';
+                    return;
+                }
+
+                const students = appData.students[selectedClassId] || [];
+
+                if (students.length === 0) {
+                    modalStudentListContainer.innerHTML = '<p class="text-center text-gray-400">Belum ada Peserta Didik di kelas ini.</p>';
+                    return;
+                }
+
+                students.forEach(student => {
+                    const studentItem = document.createElement('div');
+                    studentItem.className = 'flex items-center justify-between bg-gray-100 p-3 rounded-md';
+                    studentItem.dataset.studentId = student.id;
+                    studentItem.innerHTML = `
+                        <span class="student-name">${student.name}</span>
+                        <div class="flex items-center space-x-3">
+                            <button data-student-id="${student.id}" data-student-name="${student.name}" class="edit-student-btn text-blue-500 hover:text-blue-700 font-semibold">Edit</button>
+                            <button data-student-id="${student.id}" class="delete-student-btn text-red-500 hover:text-red-700 font-bold text-lg">&times;</button>
+                        </div>
+                    `;
+                    modalStudentListContainer.appendChild(studentItem);
+                });
+            }
+
+            function renderAccountList() {
+                modalAccountListContainer.innerHTML = '';
+                const users = appData.users || [];
+
+                if (users.length === 0) {
+                     modalAccountListContainer.innerHTML = '<p class="text-center text-gray-400">Tidak ada akun terdaftar.</p>';
+                     return;
+                }
+
+                users.forEach(user => {
+                    const accountItem = document.createElement('div');
+                    accountItem.className = 'flex items-center justify-between bg-gray-100 p-3 rounded-md';
+                    accountItem.innerHTML = `
+                        <span>${user.username}</span>
+                        <button data-username="${user.username}" class="delete-account-btn text-red-500 hover:text-red-700 font-semibold text-xs">HAPUS</button>
+                    `;
+                    modalAccountListContainer.appendChild(accountItem);
+                });
+            }
+
+            function getRecapData(selectedClassId) {
+                const students = appData.students[selectedClassId] || [];
+                const recapData = {};
+                
+                students.forEach(student => {
+                    recapData[student.id] = { name: student.name, H: 0, S: 0, I: 0, A: 0 };
+                });
+
+                Object.keys(appData.attendance).forEach(key => {
+                    const [date, classId] = key.split('_');
+                    if (classId === selectedClassId) {
+                        const dailyAttendance = appData.attendance[key];
+                        Object.keys(dailyAttendance).forEach(studentId => {
+                            const status = dailyAttendance[studentId];
+                            if (recapData[studentId] && status) {
+                                recapData[studentId][status]++;
+                            }
+                        });
+                    }
+                });
+                return { students, recapData };
+            }
+
+            function renderStudentRecap() {
+                const selectedClassId = recapClassSelector.value;
+                recapContentContainer.innerHTML = '';
+                downloadRecapBtn.disabled = true;
+
+                if (!selectedClassId) {
+                     recapContentContainer.innerHTML = '<p class="text-center text-gray-500">Pilih kelas untuk melihat rekap.</p>';
+                    return;
+                }
+                
+                const { students, recapData } = getRecapData(selectedClassId);
+
+                if (students.length === 0) {
+                    recapContentContainer.innerHTML = '<p class="text-center text-gray-500">Tidak ada Peserta Didik di kelas ini.</p>';
+                    return;
+                }
+
+                downloadRecapBtn.disabled = false;
+                
+                let tableHTML = `
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="p-3 font-semibold text-gray-600 border-b">Nama Peserta Didik</th>
+                                <th class="p-3 font-semibold text-center text-gray-600 border-b">Hadir</th>
+                                <th class="p-3 font-semibold text-center text-gray-600 border-b">Sakit</th>
+                                <th class="p-3 font-semibold text-center text-gray-600 border-b">Izin</th>
+                                <th class="p-3 font-semibold text-center text-gray-600 border-b">Alfa</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                students.forEach(student => {
+                    const data = recapData[student.id];
+                    tableHTML += `
+                            <tr class="hover:bg-gray-50">
+                                <td class="p-3 border-b">${data.name}</td>
+                                <td class="p-3 text-center border-b font-medium text-green-600">${data.H}</td>
+                                <td class="p-3 text-center border-b font-medium text-yellow-600">${data.S}</td>
+                                <td class="p-3 text-center border-b font-medium text-blue-600">${data.I}</td>
+                                <td class="p-3 text-center border-b font-medium text-red-600">${data.A}</td>
+                            </tr>
+                    `;
+                });
+
+                tableHTML += `</tbody></table>`;
+                recapContentContainer.innerHTML = tableHTML;
+            }
+
+            // --- FUNGSI BARU: Download Laporan CSV ---
+            function downloadRecapCSV() {
+                const selectedClassId = recapClassSelector.value;
+                if (!selectedClassId) return;
+
+                const selectedClassName = recapClassSelector.options[recapClassSelector.selectedIndex].text;
+                const { students, recapData } = getRecapData(selectedClassId);
+
+                if (students.length === 0) {
+                    showToast('Tidak ada data untuk diunduh.');
+                    return;
+                }
+
+                let csvContent = "Nama Peserta Didik,Hadir,Sakit,Izin,Alfa\n";
+
+                students.forEach(student => {
+                    const data = recapData[student.id];
+                    const row = [data.name, data.H, data.S, data.I, data.A].join(',');
+                    csvContent += row + "\n";
+                });
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                const safeClassName = selectedClassName.replace(/ /g, '_');
+                const fileName = `Rekap_Kehadiran_${safeClassName}.csv`;
+                link.setAttribute("download", fileName);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showToast(`Laporan ${fileName} sedang diunduh.`);
+            }
+
+
+            function addEventListeners() {
+                datePicker.addEventListener('change', renderAttendanceList);
+                classSelector.addEventListener('change', renderAttendanceList);
+
+                studentListContainer.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('status-btn')) {
+                        const studentId = e.target.parentElement.dataset.studentId;
+                        const status = e.target.dataset.status;
+                        const selectedDate = datePicker.value;
+                        const selectedClassId = classSelector.value;
+                        const attendanceKey = `${selectedDate}_${selectedClassId}`;
+
+                        if (!appData.attendance[attendanceKey]) {
+                            appData.attendance[attendanceKey] = {};
+                        }
+                        
+                        if (appData.attendance[attendanceKey][studentId] === status) {
+                            delete appData.attendance[attendanceKey][studentId];
+                        } else {
+                            appData.attendance[attendanceKey][studentId] = status;
+                        }
+                        
+                        renderAttendanceList();
+                    }
+                });
+
+                saveBtn.addEventListener('click', () => {
+                    saveData();
+                    showToast('Absensi berhasil disimpan!');
+                    renderHistory();
+                });
+                
+                historyRecordsContainer.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('delete-history-btn')) {
+                        const key = e.target.dataset.key;
+                        if (confirm('Apakah Anda yakin ingin menghapus riwayat absensi ini?')) {
+                            delete appData.attendance[key];
+                            saveData();
+                            renderHistory();
+                            showToast('Riwayat berhasil dihapus.');
+                        }
+                    }
+                });
+
+                // Event Listener untuk Modal Kelas
+                manageClassBtn.addEventListener('click', () => {
+                    classModal.classList.remove('hidden');
+                    renderModalClassList();
+                });
+                closeClassModalBtn.addEventListener('click', () => classModal.classList.add('hidden'));
+                classModal.addEventListener('click', (e) => {
+                    if (e.target === classModal) classModal.classList.add('hidden');
+                });
+                
+                // Event Listener untuk form dan list di Modal Kelas
+                addClassForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const className = newClassNameInput.value.trim();
+                    if (className) {
+                        const newId = className.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+                        if (!appData.classes.some(c => c.name.toLowerCase() === className.toLowerCase())) {
+                            appData.classes.push({ id: newId, name: className });
+                            appData.students[newId] = []; 
+                            newClassNameInput.value = '';
+                            saveData();
+                            renderModalClassList();
+                            populateClassSelectors();
+                            renderAttendanceList();
+                            showToast('Kelas berhasil ditambahkan.');
+                        } else {
+                            showToast('Nama kelas sudah ada.');
+                        }
+                    }
+                });
+
+                modalClassListContainer.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('delete-class-btn')) {
+                        const classId = e.target.dataset.classId;
+                        const className = appData.classes.find(c => c.id === classId).name;
+                        if (confirm(`Anda yakin ingin menghapus kelas "${className}"? Semua data siswa dan riwayat absensi kelas ini akan hilang.`)) {
+                            appData.classes = appData.classes.filter(c => c.id !== classId);
+                            delete appData.students[classId];
+                            Object.keys(appData.attendance).forEach(key => {
+                                if (key.endsWith(`_${classId}`)) {
+                                    delete appData.attendance[key];
+                                }
+                            });
+                            saveData();
+                            renderModalClassList();
+                            populateClassSelectors();
+                            renderAttendanceList();
+                            renderHistory();
+                            showToast('Kelas berhasil dihapus.');
+                        }
+                    }
+
+                    if (e.target.classList.contains('edit-class-btn')) {
+                        const classItemDiv = e.target.closest('.flex');
+                        const classId = e.target.dataset.classId;
+                        const className = e.target.dataset.className;
+                        
+                        classItemDiv.innerHTML = `
+                            <input type="text" value="${className}" class="edit-class-input flex-grow p-2 border border-blue-400 rounded-md">
+                            <div class="flex items-center space-x-3">
+                                <button data-class-id="${classId}" class="save-class-edit-btn text-green-500 hover:text-green-700 font-semibold">Simpan</button>
+                                <button class="cancel-class-edit-btn text-gray-500 hover:text-gray-700 font-semibold">Batal</button>
+                            </div>
+                        `;
+                    }
+                    
+                    if (e.target.classList.contains('save-class-edit-btn')) {
+                        const classId = e.target.dataset.classId;
+                        const inputField = e.target.closest('.flex').querySelector('.edit-class-input');
+                        const newName = inputField.value.trim();
+                        
+                        if (newName) {
+                            const classIndex = appData.classes.findIndex(c => c.id === classId);
+                            if (classIndex !== -1) {
+                                appData.classes[classIndex].name = newName;
+                                saveData();
+                                renderModalClassList();
+                                populateClassSelectors();
+                                renderAttendanceList();
+                                renderHistory();
+                                showToast('Nama kelas berhasil diubah.');
+                            }
+                        }
+                    }
+
+                    if (e.target.classList.contains('cancel-class-edit-btn')) {
+                        renderModalClassList();
+                    }
+                });
+
+                // Event Listeners untuk Modal Siswa
+                manageStudentBtn.addEventListener('click', () => {
+                    studentModal.classList.remove('hidden');
+                    populateClassSelectors(); 
+                    renderModalStudentList();
+                });
+                closeModalBtn.addEventListener('click', () => studentModal.classList.add('hidden'));
+                studentModal.addEventListener('click', (e) => {
+                    if (e.target === studentModal) studentModal.classList.add('hidden');
+                });
+                modalClassSelector.addEventListener('change', renderModalStudentList);
+
+                // Event Listener untuk Tambah Siswa Satu per Satu
+                addStudentForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const studentName = newStudentNameInput.value.trim();
+                    const selectedClassId = modalClassSelector.value;
+                    if (studentName && selectedClassId) {
+                        const newId = Date.now();
+                        if (!appData.students[selectedClassId]) {
+                            appData.students[selectedClassId] = [];
+                        }
+                        appData.students[selectedClassId].push({ id: newId, name: studentName });
+                        newStudentNameInput.value = '';
+                        saveData();
+                        renderModalStudentList();
+                        renderAttendanceList();
+                        showToast('Peserta Didik berhasil ditambahkan.');
+                    }
+                });
+                
+                // --- EVENT LISTENER BARU: Tombol Impor Massal ---
+                importStudentBtn.addEventListener('click', () => {
+                    const selectedClassId = modalClassSelector.value;
+                    if (!selectedClassId) {
+                        showToast('Pilih kelas terlebih dahulu!');
+                        return;
+                    }
+                    
+                    const names = bulkStudentNamesArea.value.trim().split('\n');
+                    let addedCount = 0;
+                    if (!appData.students[selectedClassId]) {
+                        appData.students[selectedClassId] = [];
+                    }
+
+                    names.forEach(name => {
+                        const trimmedName = name.trim();
+                        if (trimmedName) {
+                            const newId = Date.now() + addedCount;
+                            appData.students[selectedClassId].push({ id: newId, name: trimmedName });
+                            addedCount++;
+                        }
+                    });
+
+                    if (addedCount > 0) {
+                        saveData();
+                        renderModalStudentList();
+                        renderAttendanceList();
+                        bulkStudentNamesArea.value = '';
+                        showToast(`${addedCount} peserta didik berhasil diimpor.`);
+                    } else {
+                        showToast('Tidak ada nama valid untuk diimpor.');
+                    }
+                });
+
+                modalStudentListContainer.addEventListener('click', (e) => {
+                    const selectedClassId = modalClassSelector.value;
+
+                    if (e.target.classList.contains('delete-student-btn')) {
+                        const studentId = parseInt(e.target.dataset.studentId);
+                        if (confirm('Apakah Anda yakin ingin menghapus Peserta Didik ini?')) {
+                            appData.students[selectedClassId] = appData.students[selectedClassId].filter(s => s.id !== studentId);
+                            saveData();
+                            renderModalStudentList();
+                            renderAttendanceList();
+                            showToast('Peserta Didik berhasil dihapus.');
+                        }
+                    }
+
+                    if (e.target.classList.contains('edit-student-btn')) {
+                        const studentItem = e.target.closest('div.flex');
+                        const studentId = e.target.dataset.studentId;
+                        const studentName = e.target.dataset.studentName;
+                        
+                        studentItem.parentElement.innerHTML = `
+                            <input type="text" value="${studentName}" class="edit-student-input flex-grow p-2 border border-blue-400 rounded-md">
+                            <div class="flex items-center space-x-3">
+                                <button data-student-id="${studentId}" class="save-edit-btn text-green-500 hover:text-green-700 font-semibold">Simpan</button>
+                                <button class="cancel-edit-btn text-gray-500 hover:text-gray-700 font-semibold">Batal</button>
+                            </div>
+                        `;
+                    }
+                    
+                    if (e.target.classList.contains('save-edit-btn')) {
+                        const studentId = parseInt(e.target.dataset.studentId);
+                        const inputField = e.target.parentElement.previousElementSibling;
+                        const newName = inputField.value.trim();
+                        
+                        if (newName) {
+                            const studentIndex = appData.students[selectedClassId].findIndex(s => s.id === studentId);
+                            if (studentIndex !== -1) {
+                                appData.students[selectedClassId][studentIndex].name = newName;
+                                saveData();
+                                renderModalStudentList();
+                                renderAttendanceList();
+                                showToast('Nama Peserta Didik berhasil diubah.');
+                            }
+                        }
+                    }
+
+                    if (e.target.classList.contains('cancel-edit-btn')) {
+                        renderModalStudentList();
+                    }
+                });
+                
+                // Event Listeners untuk Modal Akun
+                manageAccountBtn.addEventListener('click', () => {
+                    accountModal.classList.remove('hidden');
+                    renderAccountList();
+                });
+                closeAccountModalBtn.addEventListener('click', () => accountModal.classList.add('hidden'));
+                accountModal.addEventListener('click', (e) => {
+                    if (e.target === accountModal) accountModal.classList.add('hidden');
+                });
+                
+                addAccountForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const newUsername = newUsernameInput.value.trim();
+                    const newPassword = newPasswordInput.value.trim();
+
+                    if(newUsername && newPassword) {
+                        if (appData.users.some(user => user.username === newUsername)) {
+                            showToast('Username sudah ada. Gunakan username lain.');
+                            return;
+                        }
+                        appData.users.push({ username: newUsername, password: newPassword });
+                        saveData();
+                        renderAccountList();
+                        showToast('Akun baru berhasil ditambahkan.');
+                        addAccountForm.reset();
+                    }
+                });
+
+                modalAccountListContainer.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('delete-account-btn')) {
+                        if (appData.users.length <= 1) {
+                            showToast('Tidak bisa menghapus akun terakhir.');
+                            return;
+                        }
+                        const usernameToDelete = e.target.dataset.username;
+                        if (confirm(`Apakah Anda yakin ingin menghapus akun '${usernameToDelete}'?`)) {
+                            appData.users = appData.users.filter(user => user.username !== usernameToDelete);
+                            saveData();
+                            renderAccountList();
+                            showToast('Akun berhasil dihapus.');
+                        }
+                    }
+                });
+
+                // Event Listeners untuk Modal Rekapitulasi
+                recapBtn.addEventListener('click', () => {
+                    recapModal.classList.remove('hidden');
+                    populateClassSelectors();
+                    renderStudentRecap();
+                });
+                closeRecapModalBtn.addEventListener('click', () => recapModal.classList.add('hidden'));
+                recapModal.addEventListener('click', (e) => {
+                    if (e.target === recapModal) recapModal.classList.add('hidden');
+                });
+                recapClassSelector.addEventListener('change', renderStudentRecap);
+                
+                // --- EVENT LISTENER BARU: Tombol Download ---
+                downloadRecapBtn.addEventListener('click', downloadRecapCSV);
+            }
+        });
+    </script>
+ <footer class="text-center mt-12 py-4 border-t border-gray-200">
+                <p class="text-sm text-gray-500">© 2025 | ahmadrifapermana, all rights reserved</p>
+            </footer>
+</body>
+</html>
